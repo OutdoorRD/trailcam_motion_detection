@@ -71,7 +71,7 @@ def main():
                 output_dir, basename + '_%d.png' % image_index)
             print "%d,%s" % (image_index, image_path)
             cv2.imwrite(image_path, frame)
-            if consecutive_start != -1:
+            if consecutive_start == -1:
                 consecutive_start = image_index
             n_detected += 1
         else:
