@@ -4,9 +4,9 @@ import time
 
 import cv2
 
-MIN_CONTOUR_AREA = 4500
-VIDEO_PATH = r"C:\Users\Daddy\Downloads\160828AB.avi"
-AOI_MASK_PATH = r"E:\repositories\trailcam_motion\160828AB.avi_mask.png"
+MIN_CONTOUR_AREA = 4000
+VIDEO_PATH = r"./160913AA.TLV"
+AOI_MASK_PATH = r"./160913AA.TLV_mask.png"
 OUTPUT_BASE_DIR = 'trailcam_detection_results'
 
 
@@ -78,7 +78,9 @@ def main():
             # recalculate width and height based on BB cooridnates
             w = xp - x
             h = yp - y
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 1)
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+            cv2.putText(frame, str(w*h), (x + w, y + h), cv2.FONT_HERSHEY_SIMPLEX, .85, (0, 0, 255), 2)
+            cv2.putText(frame, str(w*h), (1, 25), cv2.FONT_HERSHEY_SIMPLEX, .65, (0, 0, 255), 2)
             image_path = os.path.join(
                 output_dir, basename + '_%d.png' % image_index)
             # save that frame to disk
