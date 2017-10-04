@@ -6,9 +6,6 @@ import csv
 from datetime import datetime
 
 
-# TODO: frames for image frequency
-
-
 MIN_CONTOUR_AREA = 4000
 MASK_BASE_DIR = r"/tmp/plotwatcher_masks/framesNmasks/"
 INPUT_BASE_DIR = r"/tmp/plotwatcher/"
@@ -35,16 +32,25 @@ def main():
     consecutive_start = -1
     series_list = []
     n_detected = 0
+
+    # Number of vid frames
+    video_length = int(video.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT))
+
     while True:
         image_index += 1
         valid, frame = video.read()
         if not valid:
             break
         
-        # save first frame to disk no matter what (for vid start-time data)
-        if image_index == 1:
+        # save first frame to disk (for vid start-time data)
+        if image_index == 0:
             image_path_first = os.path.join(output_dir, basename + '_first.jpg')
             cv2.imwrite(image_path_first, frame)
+        
+        # save last image to disk (for vid end-time data)
+        if image_index == video_length-1:
+            image_path_last = os.path.join(output_dir, basename + '_last.jpg')
+            cv2.imwrite(image_path_last, frame)
         
         masked_frame = cv2.bitwise_and(frame, aoi_mask)
         # resize the frame, convert it to grayscale, and blur it
@@ -131,6 +137,7 @@ def main():
         statsfile.write("MASK_BASE_DIR " + MASK_BASE_DIR + "\n")
         statsfile.write("INPUT_BASE_DIR " + INPUT_BASE_DIR + "\n")
         statsfile.write("OUTPUT_BASE_DIR " + OUTPUT_BASE_DIR + "\n")
+        statsfile.write("%d frames analysed\n" % image_index)
         statsfile.write("%d motion frames detected\n" % n_detected)
         statsfile.write("%d series detected\n" % len(series_list))
         statsfile.write("consecutive motion series:\n")
@@ -139,6 +146,8 @@ def main():
                 "%d - %d, %d\n" % (
                     start_index, end_index, end_index - start_index + 1))
     print open(stats_path, 'r').read()
+
+
 
 
 
