@@ -1,28 +1,34 @@
-"""Trailcam motion detection example with OpenCV and mask."""
+"""Trailcam motion detection with OpenCV and mask"""
 import os
 import time
-
 import cv2
+import csv
+from datetime import datetime
+
 
 MIN_CONTOUR_AREA = 4000
-VIDEO_PATH = r"./160913AA.TLV"
-AOI_MASK_PATH = r"./160913AA.TLV_mask.png"
-OUTPUT_BASE_DIR = 'trailcam_detection_results'
+MASK_BASE_DIR = r"/tmp/plotwatcher_masks/framesNmasks/"
+INPUT_BASE_DIR = r"/tmp/plotwatcher/"
+OUTPUT_BASE_DIR = r"/tmp/plotwatcher_motionframes/"
+#MASK_BASE_DIR = r"/mnt/trails/TRAILS_STUDY_INFO/plotwatcher_masks/masks_120816/"
+#INPUT_BASE_DIR = r"/mnt/trails/TRAILS_STUDY_INFO/plotwatcher/"
+#OUTPUT_BASE_DIR = r"/mnt/trails/TRAILS_STUDY_INFO/plotwatcher_motionframes/"
 
 
 def main():
     """Entry point."""
     # make an output folder
-    basename = os.path.basename(VIDEO_PATH)
-    output_dir = os.path.join(OUTPUT_BASE_DIR, os.path.splitext(basename)[0])
+    print "processing " + video_path
+    basename = os.path.basename(video_path)
+    output_dir = os.path.join(OUTPUT_BASE_DIR, sitedate, os.path.splitext(basename)[0])
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-
+    
     # Load video object
-    video = cv2.VideoCapture(VIDEO_PATH)
+    video = cv2.VideoCapture(video_path)
     last_filter_frame = None
     image_index = -1
-    aoi_mask = cv2.imread(AOI_MASK_PATH)
+    aoi_mask = cv2.imread(mask_path)
     consecutive_start = -1
     series_list = []
     n_detected = 0
@@ -31,25 +37,25 @@ def main():
         valid, frame = video.read()
         if not valid:
             break
-
+        
         masked_frame = cv2.bitwise_and(frame, aoi_mask)
         # resize the frame, convert it to grayscale, and blur it
         gray_frame = cv2.cvtColor(masked_frame, cv2.COLOR_BGR2GRAY)
         filter_frame = cv2.GaussianBlur(gray_frame, (31, 31), 0)
-
+        
         if last_filter_frame is None:
             last_filter_frame = filter_frame
-
+        
         delta = cv2.absdiff(last_filter_frame, filter_frame)
         thresholded_frame = cv2.threshold(
             delta, 25, 255, cv2.THRESH_BINARY)[1]
-
+        
         # dilate the thresholded image to fill in holes, then find contours
         # on thresholded image
         dilated_frame = cv2.dilate(thresholded_frame, None, iterations=3)
         (contour_list, _) = cv2.findContours(
             dilated_frame.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
+        
         # loop over the contours and construct the largest bounding box
         detected_motion = False
         x, y, w, h = None, None, None, None
@@ -73,7 +79,7 @@ def main():
                 y = min(y, local_y)
                 yp = max(yp, local_yp)
             detected_motion = True
-
+        
         if detected_motion:
             # recalculate width and height based on BB cooridnates
             w = xp - x
@@ -82,7 +88,7 @@ def main():
             cv2.putText(frame, str(w*h), (x + w, y + h), cv2.FONT_HERSHEY_SIMPLEX, .85, (0, 0, 255), 2)
             cv2.putText(frame, str(w*h), (1, 25), cv2.FONT_HERSHEY_SIMPLEX, .65, (0, 0, 255), 2)
             image_path = os.path.join(
-                output_dir, basename + '_%d.png' % image_index)
+                output_dir, basename + '_%d.jpg' % image_index)
             # save that frame to disk
             cv2.imwrite(image_path, frame)
             # start tracking a new consecutive sequence
@@ -98,13 +104,21 @@ def main():
                     image_index - consecutive_start)
                 consecutive_start = -1
         last_filter_frame = filter_frame
-
+    
     video.release()
     cv2.destroyAllWindows()
-
+    
     # save a nice stats file and print result
-    stats_path = os.path.join(OUTPUT_BASE_DIR, basename + '_stats.txt')
+    stats_path = os.path.join(OUTPUT_BASE_DIR, sitedate, basename + '_stats.txt')
     with open(stats_path, 'w') as statsfile:
+        statsfile.write("run finished at " + str(datetime.now()) + " UTC\n")
+        statsfile.write("running on host " + str(os.uname()) + "\n")
+        statsfile.write("video " + video_path + "\n")
+        statsfile.write("mask " + mask_path + "\n")
+        statsfile.write("MIN_CONTOUR_AREA " + str(MIN_CONTOUR_AREA) + "\n")
+        statsfile.write("MASK_BASE_DIR " + MASK_BASE_DIR + "\n")
+        statsfile.write("INPUT_BASE_DIR " + INPUT_BASE_DIR + "\n")
+        statsfile.write("OUTPUT_BASE_DIR " + OUTPUT_BASE_DIR + "\n")
         statsfile.write("%d motion frames detected\n" % n_detected)
         statsfile.write("%d series detected\n" % len(series_list))
         statsfile.write("consecutive motion series:\n")
@@ -115,5 +129,16 @@ def main():
     print open(stats_path, 'r').read()
 
 
-if __name__ == '__main__':
-    main()
+
+with open('/tmp/plotwatcher_motionframes/plotwatch-samples_batch2_201612229.csv', 'rb') as csvfile:
+    csvreader = csv.reader(csvfile, delimiter=',')
+    csvreader.next()
+    for row in csvreader:
+        if not os.path.exists(os.path.join(OUTPUT_BASE_DIR, row[1], row[2] + '_stats.txt')):
+            print(row)
+            sitedate = row[1]
+            vid = row[2]
+            video_path = INPUT_BASE_DIR + sitedate + "/" + vid
+            mask_path = MASK_BASE_DIR + sitedate + "_mask.png"
+            main()
+
