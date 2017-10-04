@@ -6,6 +6,9 @@ import csv
 from datetime import datetime
 
 
+# TODO: frames for image frequency
+
+
 MIN_CONTOUR_AREA = 4000
 MASK_BASE_DIR = r"/tmp/plotwatcher_masks/framesNmasks/"
 INPUT_BASE_DIR = r"/tmp/plotwatcher/"
@@ -37,6 +40,11 @@ def main():
         valid, frame = video.read()
         if not valid:
             break
+        
+        # save first frame to disk no matter what (for vid start-time data)
+        if image_index == 1:
+            image_path_first = os.path.join(output_dir, basename + '_first.jpg')
+            cv2.imwrite(image_path_first, frame)
         
         masked_frame = cv2.bitwise_and(frame, aoi_mask)
         # resize the frame, convert it to grayscale, and blur it
@@ -105,6 +113,10 @@ def main():
                 consecutive_start = -1
         last_filter_frame = filter_frame
     
+    # save last image no matter what (for vid end-time data)
+    image_path_last = os.path.join(output_dir, basename + '_last.jpg')
+    cv2.imwrite(image_path_last, frame)
+    
     video.release()
     cv2.destroyAllWindows()
     
@@ -140,5 +152,14 @@ with open('/tmp/plotwatcher_motionframes/plotwatch-samples_batch2_201612229.csv'
             vid = row[2]
             video_path = INPUT_BASE_DIR + sitedate + "/" + vid
             mask_path = MASK_BASE_DIR + sitedate + "_mask.png"
-            main()
+            if os.path.exists(mask_path):
+                try:
+                    main()
+                except:
+                    print("ERROR: skipping " + sitedate + "/" + vid + " because opencv couldnt process it.")
+            else:
+                print("ERROR: skipping " + sitedate + "/" + vid + " because mask " + mask_path + " not found")
+        else:
+            print("Skipping " + row[1] + "/" + row[2] + ": already processed")
+
 
