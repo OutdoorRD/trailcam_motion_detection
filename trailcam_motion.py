@@ -1,4 +1,5 @@
 """Trailcam motion detection with OpenCV and mask"""
+
 import os
 import time
 import cv2
@@ -8,11 +9,9 @@ from datetime import datetime
 
 MIN_CONTOUR_AREA = 4000
 MASK_BASE_DIR = r"/tmp/plotwatcher_masks/framesNmasks/"
-INPUT_BASE_DIR = r"/tmp/plotwatcher/"
-OUTPUT_BASE_DIR = r"/tmp/plotwatcher_motionframes/"
-#MASK_BASE_DIR = r"/mnt/trails/TRAILS_STUDY_INFO/plotwatcher_masks/masks_120816/"
-#INPUT_BASE_DIR = r"/mnt/trails/TRAILS_STUDY_INFO/plotwatcher/"
-#OUTPUT_BASE_DIR = r"/mnt/trails/TRAILS_STUDY_INFO/plotwatcher_motionframes/"
+RAWVID_BASE_DIR = r"/tmp/plotwatcher_rawvids/"
+MOTION_BASE_DIR = r"/tmp/plotwatcher_motionframes/"
+OUTPUT_BASE_DIR = r"/tmp/motionframes_TOSIALIA/"
 
 
 def main():
@@ -32,10 +31,10 @@ def main():
     consecutive_start = -1
     series_list = []
     n_detected = 0
-
+    
     # Number of vid frames
     video_length = int(video.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT))
-
+    
     while True:
         image_index += 1
         valid, frame = video.read()
@@ -119,10 +118,6 @@ def main():
                 consecutive_start = -1
         last_filter_frame = filter_frame
     
-    # save last image no matter what (for vid end-time data)
-    image_path_last = os.path.join(output_dir, basename + '_last.jpg')
-    cv2.imwrite(image_path_last, frame)
-    
     video.release()
     cv2.destroyAllWindows()
     
@@ -135,7 +130,8 @@ def main():
         statsfile.write("mask " + mask_path + "\n")
         statsfile.write("MIN_CONTOUR_AREA " + str(MIN_CONTOUR_AREA) + "\n")
         statsfile.write("MASK_BASE_DIR " + MASK_BASE_DIR + "\n")
-        statsfile.write("INPUT_BASE_DIR " + INPUT_BASE_DIR + "\n")
+        statsfile.write("RAWVID_BASE_DIR " + RAWVID_BASE_DIR + "\n")
+        statsfile.write("MOTION_BASE_DIR " + MOTION_BASE_DIR + "\n")
         statsfile.write("OUTPUT_BASE_DIR " + OUTPUT_BASE_DIR + "\n")
         statsfile.write("%d frames analysed\n" % image_index)
         statsfile.write("%d motion frames detected\n" % n_detected)
@@ -151,15 +147,15 @@ def main():
 
 
 
-with open('/tmp/plotwatcher_motionframes/plotwatch-samples_batch2_201612229.csv', 'rb') as csvfile:
+with open('/tmp/plotwatcher_motionframes/gfa_plotwatch-samples_batch3_20170726.csv', 'rb') as csvfile:
     csvreader = csv.reader(csvfile, delimiter=',')
     csvreader.next()
     for row in csvreader:
-        if not os.path.exists(os.path.join(OUTPUT_BASE_DIR, row[1], row[2] + '_stats.txt')):
+        if not os.path.exists(os.path.join(MOTION_BASE_DIR, row[1], row[2] + '_stats.txt')):
             print(row)
             sitedate = row[1]
             vid = row[2]
-            video_path = INPUT_BASE_DIR + sitedate + "/" + vid
+            video_path = RAWVID_BASE_DIR + sitedate + "/" + vid
             mask_path = MASK_BASE_DIR + sitedate + "_mask.png"
             if os.path.exists(mask_path):
                 try:
